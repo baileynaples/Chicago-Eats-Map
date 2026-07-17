@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>Chicago Food Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      color-scheme: light;
+      --panel-shadow: 0 3px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body, #map {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body { background: #eef1f4; }
+
+    #panel {
+      position: absolute;
+      z-index: 1000;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 20px);
+      max-width: 560px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: var(--panel-shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #171717;
+      font-size: 21px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    #count {
+      min-width: 46px;
+      padding: 7px 9px;
+      border-radius: 12px;
+      background: #f0f2f5;
+      color: #333;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 145px;
+      gap: 8px;
+    }
+
+    #search, #status-filter {
+      width: 100%;
+      min-width: 0;
+      height: 42px;
+      padding: 0 11px;
+      border: 1px solid #d8dce2;
+      border-radius: 11px;
+      background: white;
+      color: #222;
+      font: inherit;
+      font-size: 15px;
+      outline: none;
+    }
+
+    #search:focus, #status-filter:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+
+    #legend {
+      position: absolute;
+      z-index: 999;
+      left: 10px;
+      bottom: 22px;
+      padding: 9px 11px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--panel-shadow);
+      color: #333;
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+
+    .legend-title {
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+    }
+
+    #readonly-badge {
+      position: absolute;
+      z-index: 999;
+      right: 10px;
+      bottom: 22px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(30, 30, 30, 0.84);
+      color: white;
+      font-size: 12px;
+      font-weight: 750;
+      pointer-events: none;
+    }
+
+    .restaurant-marker-icon {
+      background: transparent !important;
+      border: 0 !important;
+    }
+
+    .restaurant-popup {
+      min-width: 220px;
+      max-width: 290px;
+    }
+
+    .restaurant-popup h3 {
+      margin: 0 0 5px;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .address {
+      color: #555;
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .rating {
+      color: #8a5c00;
+      font-weight: 800;
+      margin: 5px 0;
+      letter-spacing: 1px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      margin: 2px 0 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tags { margin: 6px 0; }
+
+    .tag {
+      display: inline-block;
+      margin: 0 4px 4px 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #edf2ff;
+      color: #244aa5;
+      font-size: 12px;
+    }
+
+    .notes {
+      max-height: 140px;
+      overflow-y: auto;
+      margin: 7px 0;
+      padding: 8px;
+      border-radius: 9px;
+      background: #f5f5f7;
+      line-height: 1.35;
+    }
+
+    .food-photo {
+      display: block;
+      width: 100%;
+      max-height: 210px;
+      object-fit: cover;
+      margin: 7px 0;
+      border-radius: 10px;
+    }
+
+    .directions-link {
+      display: block;
+      margin-top: 9px;
+      padding: 9px 11px;
+      border-radius: 9px;
+      background: #2563eb;
+      color: white !important;
+      text-align: center;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    #empty-message {
+      display: none;
+      position: absolute;
+      z-index: 998;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(320px, calc(100% - 40px));
+      padding: 18px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--panel-shadow);
+      color: #444;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    @media (max-width: 540px) {
+      .controls { grid-template-columns: 1fr; }
+      #panel { max-width: none; }
+      #legend { bottom: 18px; }
+      #readonly-badge { bottom: 18px; }
+    }
+
+    @media (max-width: 390px) {
+      #legend { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <section id="panel" aria-label="Map controls">
+    <div class="title-row">
+      <div>
+        <h1>Chicago Food Map</h1>
+        <p class="subtitle">Read-only shared map &bull; Updated July 16, 2026 at 09:54 PM</p>
+      </div>
+      <div id="count">0</div>
+    </div>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search names, neighborhoods, tags, or notes" aria-label="Search restaurants">
+      <select id="status-filter" aria-label="Filter by restaurant status">
+        <option value="all">All statuses</option>
+        <option value="want_to_try">Want to Try</option>
+        <option value="visited">Visited</option>
+        <option value="liked">Liked</option>
+        <option value="didnt_like">Didn't Like</option>
+        <option value="uncategorized">Uncategorized</option>
+      </select>
+    </div>
+  </section>
+
+  <aside id="legend">
+    <div class="legend-title">Marker status</div>
+    <div id="legend-rows"></div>
+  </aside>
+
+  <div id="readonly-badge">View only</div>
+  <div id="empty-message">No restaurants match these filters.</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const restaurants = [{"id":1,"name":"pierogi kitchen","address":"","tags":"polish, stew","status":"liked","rating":4,"notes":"Yummy periogies, good stew!","latitude":41.910675,"longitude":-87.674879,"photo_data":""}];
+    const map = L.map('map', {zoomControl: true}).setView([41.8781, -87.6298], 12);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const restaurantLayer = L.layerGroup().addTo(map);
+    let firstRender = true;
+
+    const STATUS_INFO = {
+      want_to_try: {label: 'Want to Try', color: '#2563eb'},
+      visited: {label: 'Visited', color: '#f59e0b'},
+      liked: {label: 'Liked', color: '#16a34a'},
+      didnt_like: {label: "Didn't Like", color: '#dc2626'},
+      uncategorized: {label: 'Uncategorized', color: '#6b7280'}
+    };
+
+    const STATUS_ORDER = [
+      'want_to_try', 'visited', 'liked', 'didnt_like', 'uncategorized'
+    ];
+
+    function escapeHtml(value) {
+      const text = String(value == null ? '' : value);
+      return text.replace(/[&<>"']/g, function(character) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[character];
+      });
+    }
+
+    function getStatusInfo(status) {
+      const key = Object.prototype.hasOwnProperty.call(STATUS_INFO, status)
+        ? status
+        : 'uncategorized';
+      return {key: key, label: STATUS_INFO[key].label, color: STATUS_INFO[key].color};
+    }
+
+    function buildLegend() {
+      document.getElementById('legend-rows').innerHTML = STATUS_ORDER
+        .map(function(key) {
+          const info = STATUS_INFO[key];
+          return '<div class="legend-row">' +
+            '<span class="legend-dot" style="background:' + info.color + '"></span>' +
+            escapeHtml(info.label) + '</div>';
+        })
+        .join('');
+    }
+
+    function markerIcon(status) {
+      const info = getStatusInfo(status);
+      const svg = '<svg width="34" height="46" viewBox="0 0 34 46" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<path d="M17 1C8.16 1 1 8.16 1 17c0 12 16 28 16 28s16-16 16-28C33 8.16 25.84 1 17 1z" ' +
+        'fill="' + info.color + '" stroke="#ffffff" stroke-width="2"/>' +
+        '<circle cx="17" cy="17" r="6" fill="#ffffff"/>' +
+        '</svg>';
+
+      return L.divIcon({
+        className: 'restaurant-marker-icon',
+        html: svg,
+        iconSize: [34, 46],
+        iconAnchor: [17, 44],
+        popupAnchor: [0, -42]
+      });
+    }
+
+    function ratingHtml(rating) {
+      const value = Math.max(0, Math.min(5, Number(rating) || 0));
+      if (!value) return '';
+      return '<div class="rating">' + '&#9733;'.repeat(value) + '&#9734;'.repeat(5 - value) + '</div>';
+    }
+
+    function tagHtml(tags) {
+      if (!tags) return '';
+      const items = tags.split(',')
+        .map(function(tag) { return tag.trim(); })
+        .filter(Boolean)
+        .map(function(tag) { return '<span class="tag">' + escapeHtml(tag) + '</span>'; })
+        .join('');
+      return items ? '<div class="tags">' + items + '</div>' : '';
+    }
+
+    function popupHtml(restaurant) {
+      const status = getStatusInfo(restaurant.status);
+      const address = restaurant.address
+        ? '<div class="address">' + escapeHtml(restaurant.address) + '</div>'
+        : '';
+      const notes = restaurant.notes
+        ? '<div class="notes">' + escapeHtml(restaurant.notes).replace(/\n/g, '<br>') + '</div>'
+        : '';
+      const photo = restaurant.photo_data
+        ? '<img class="food-photo" src="' + restaurant.photo_data + '" alt="Food at ' + escapeHtml(restaurant.name) + '">'
+        : '';
+      const directions = 'https://maps.apple.com/?daddr=' +
+        encodeURIComponent(restaurant.latitude + ',' + restaurant.longitude) +
+        '&q=' + encodeURIComponent(restaurant.name);
+
+      return '<div class="restaurant-popup">' +
+        '<h3>' + escapeHtml(restaurant.name) + '</h3>' +
+        address +
+        '<div class="status-badge" style="background:' + status.color + '">' + escapeHtml(status.label) + '</div>' +
+        ratingHtml(restaurant.rating) +
+        tagHtml(restaurant.tags) +
+        photo +
+        notes +
+        '<a class="directions-link" href="' + directions + '" target="_blank" rel="noopener">Open directions</a>' +
+      '</div>';
+    }
+
+    function matches(restaurant, query, statusFilter) {
+      const status = getStatusInfo(restaurant.status);
+      if (statusFilter !== 'all' && status.key !== statusFilter) return false;
+      if (!query) return true;
+
+      const haystack = [
+        restaurant.name,
+        restaurant.address,
+        restaurant.tags,
+        restaurant.notes,
+        status.key,
+        status.label
+      ].join(' ').toLowerCase();
+
+      return haystack.indexOf(query) !== -1;
+    }
+
+    function renderMarkers() {
+      restaurantLayer.clearLayers();
+
+      const query = (document.getElementById('search').value || '').trim().toLowerCase();
+      const statusFilter = document.getElementById('status-filter').value || 'all';
+      const bounds = [];
+      let visibleCount = 0;
+
+      restaurants.forEach(function(restaurant) {
+        if (!matches(restaurant, query, statusFilter)) return;
+
+        const status = getStatusInfo(restaurant.status);
+        const marker = L.marker(
+          [restaurant.latitude, restaurant.longitude],
+          {icon: markerIcon(status.key), title: restaurant.name + ' - ' + status.label}
+        )
+          .addTo(restaurantLayer)
+          .bindTooltip(escapeHtml(restaurant.name) + ' - ' + escapeHtml(status.label), {
+            direction: 'top',
+            offset: [0, -38]
+          })
+          .bindPopup(popupHtml(restaurant), {maxWidth: 310});
+
+        bounds.push([restaurant.latitude, restaurant.longitude]);
+        visibleCount += 1;
+      });
+
+      document.getElementById('count').textContent = String(visibleCount);
+      document.getElementById('empty-message').style.display = visibleCount ? 'none' : 'block';
+
+      if (firstRender && bounds.length) {
+        map.fitBounds(bounds, {padding: [55, 55], maxZoom: 14});
+      }
+      firstRender = false;
+    }
+
+    buildLegend();
+    renderMarkers();
+
+    document.getElementById('search').addEventListener('input', renderMarkers);
+    document.getElementById('status-filter').addEventListener('change', renderMarkers);
+
+    L.DomEvent.disableClickPropagation(document.getElementById('panel'));
+    L.DomEvent.disableScrollPropagation(document.getElementById('panel'));
+  </script>
+</body>
+</html>
